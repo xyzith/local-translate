@@ -199,3 +199,10 @@ test('switching model while the old one is still loading does not wait for it', 
   assert.deepEqual(hostPort.sent.at(-1), { id: 1, done: true, tps: 3 });
   assert.notEqual(host.status().text, 'stale');
 });
+
+test('cache keys change with the prompt version', async () => {
+  const { PROMPT_VERSION } = await import('../src/shared/prompt.js');
+  const bytes = new TextEncoder().encode(`m\nv${PROMPT_VERSION}\nHello`);
+  const expected = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  assert.equal(await cacheKey('m', 'Hello'), expected);
+});

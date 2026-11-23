@@ -57,3 +57,12 @@ test('a selection inside one paragraph yields just that paragraph', async () => 
   range.setEnd(d.getElementById('p').firstChild, 5);
   assert.deepEqual(findBlocksInRange(range).map((b) => b.id), ['p']);
 });
+
+test('a list item\'s text excludes its nested sub-list and nested blocks', async () => {
+  const { blockText } = await import('../src/content/block.js');
+  const d = domFrom(`<ul><li id="li">Added a spell auto-grant.
+    <ul><li>Some spells are not auto-granted.</li><li>Requires All Access.</li></ul></li></ul>
+    <blockquote id="bq">Quoted <p>inner para</p></blockquote>`);
+  assert.equal(blockText(d.getElementById('li')), 'Added a spell auto-grant.');
+  assert.equal(blockText(d.getElementById('bq')), 'Quoted');
+});

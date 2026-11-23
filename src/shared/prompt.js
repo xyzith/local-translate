@@ -1,26 +1,19 @@
-export const DESCRIPTION_CHARS = 300;
+export const PROMPT_VERSION = 2;
 
-const SYSTEM = `你是網路文章的翻譯員。把 <text> 裡的英文段落翻成台灣繁體中文，用台灣網友的口語和用語。
-<page> 只是幫你理解這個網頁在講什麼的背景，絕對不要翻譯或輸出它們。
-俚語、梗、縮寫（IIRC、TIL、/s 等）要意譯成台灣人懂的說法；專有名詞、模型名、程式碼保留原文。
-只輸出 <text> 的譯文本身，不要加說明、引號、標籤或原文。`;
+const SYSTEM = `你是網路文章的翻譯員。把使用者給的英文段落翻成台灣繁體中文，用台灣的口語和用語。
+俚語、梗、縮寫要意譯成台灣人懂的說法；專有名詞、產品名、程式碼保留原文。
+只輸出譯文本身，不要加說明、引號或原文。`;
 
 export function buildPageContext(doc) {
-  const context = {};
   const title = doc.title.trim();
-  const description = doc.querySelector('meta[name="description"]')?.getAttribute('content')?.trim().slice(0, DESCRIPTION_CHARS);
-  if (title) context.pageTitle = title;
-  if (description) context.description = description;
-  return context;
+  return title ? { pageTitle: title } : {};
 }
 
 export function buildMessages({ text, context }) {
-  const lines = [];
-  if (context.pageTitle) lines.push(`<page>${[context.pageTitle, context.description].filter(Boolean).join(' — ')}</page>`);
-  lines.push(`請翻譯：\n<text>\n${text}`);
+  const background = context.pageTitle ? `\n\n背景（只供理解用語，不要翻譯或輸出）：網頁標題是「${context.pageTitle}」。` : '';
   return [
-    { role: 'system', content: SYSTEM },
-    { role: 'user', content: lines.join('\n\n') },
+    { role: 'system', content: SYSTEM + background },
+    { role: 'user', content: text },
   ];
 }
 

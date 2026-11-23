@@ -1,23 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { domFrom } from './helpers/dom.js';
-import { buildPageContext, buildMessages, stripThink, DESCRIPTION_CHARS } from '../src/shared/prompt.js';
+import { buildPageContext, buildMessages, stripThink } from '../src/shared/prompt.js';
 
-test('page context uses the document title and a capped meta description', () => {
-  const d = domFrom(`<head><title>Rust 1.90 released</title><meta name="description" content="${'x'.repeat(500)}"></head>`);
-  const ctx = buildPageContext(d);
-  assert.equal(ctx.pageTitle, 'Rust 1.90 released');
-  assert.equal(ctx.description.length, DESCRIPTION_CHARS);
+test('page context is just the document title; meta description is SEO noise and ignored', () => {
+  const d = domFrom('<head><title>Patch notes</title><meta name="description" content="Fanbyte EverQuest :: the place for everything"></head>');
+  assert.deepEqual(buildPageContext(d), { pageTitle: 'Patch notes' });
   assert.deepEqual(buildPageContext(domFrom('<p>no head</p>')), {});
 });
 
-test('messages fence the page context and end with the text to translate', () => {
-  const [system, user] = buildMessages({ text: 'Hi there.', context: { pageTitle: 'T', description: 'D' } });
-  assert.equal(system.role, 'system');
+test('the page title goes into the system prompt; the user message is only the text', () => {
+  const [system, user] = buildMessages({ text: 'Hi there.', context: { pageTitle: 'Patch notes' } });
   assert.match(system.content, /台灣/);
-  assert.match(user.content, /<page>T — D<\/page>/);
-  assert.ok(user.content.trimEnd().endsWith('Hi there.'));
-  assert.ok(!buildMessages({ text: 'x', context: {} })[1].content.includes('<page>'));
+  assert.match(system.content, /Patch notes/);
+  assert.equal(user.content, 'Hi there.');
+  assert.ok(!buildMessages({ text: 'x', context: {} })[0].content.includes('網頁標題'));
 });
 
 test('stripThink removes finished and still-streaming think blocks', () => {

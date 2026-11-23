@@ -1,8 +1,10 @@
+import { PROMPT_VERSION } from '../shared/prompt.js';
+
 const DB_NAME = 'rlt';
 const STORE = 'translations';
 
 export async function cacheKey(modelId, text) {
-  const bytes = new TextEncoder().encode(`${modelId}\n${text}`);
+  const bytes = new TextEncoder().encode(`${modelId}\nv${PROMPT_VERSION}\n${text}`);
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }

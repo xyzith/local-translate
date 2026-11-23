@@ -4,11 +4,13 @@ const BLOCK_TAGS = new Set(['P', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOC
 const INLINE_TAGS = new Set(['A', 'ABBR', 'B', 'BDI', 'BDO', 'BR', 'CITE', 'CODE', 'DATA', 'DFN', 'EM', 'FONT', 'I', 'IMG', 'KBD', 'LABEL', 'MARK', 'Q', 'S', 'SAMP', 'SMALL', 'SPAN', 'STRONG', 'SUB', 'SUP', 'TIME', 'U', 'VAR', 'WBR']);
 const SKIP = 'pre, code, nav, script, style, textarea, input, select, button, [contenteditable=""], [contenteditable="true"], .rlt-tr';
 
+const NESTED = 'ul, ol, dl, p, li, h1, h2, h3, h4, h5, h6, blockquote, table, figure, pre, div, .rlt-tr';
+
 const isTextDiv = (el) => el.tagName === 'DIV' && [...el.children].every((c) => INLINE_TAGS.has(c.tagName));
 
 export function blockText(el) {
   const clone = el.cloneNode(true);
-  clone.querySelectorAll('.rlt-tr').forEach((n) => n.remove());
+  clone.querySelectorAll(NESTED).forEach((n) => n.remove());
   return clone.textContent.replace(/\s+/g, ' ').trim();
 }
 
