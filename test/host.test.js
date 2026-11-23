@@ -287,5 +287,6 @@ test('long paragraphs are not kept as history so prompts stay inside the context
   content.postMessage(job(1, 'Long. '.repeat(200)));
   content.postMessage(job(2, 'Short.'));
   for (let i = 0; i < 8; i++) await settle();
-  assert.ok(!seen[1].some((m) => m.role === 'assistant' && m.content === zh('Long. '.repeat(200))));
+  assert.equal(seen.length, 2);
+  assert.ok(!seen[1].slice(1, -1).some((m) => m.content.includes('Long. Long.')));
 });
