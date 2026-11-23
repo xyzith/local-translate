@@ -1,13 +1,17 @@
 import { CreateMLCEngine } from '@mlc-ai/web-llm';
+import { resolveVariant } from './variant.js';
 
 const MAX_TOKENS = 2048;
 
 export async function createWebLLMEngine(modelId, onProgress) {
   if (!navigator.gpu) throw new Error('這個瀏覽器沒有 WebGPU');
-  if (!(await navigator.gpu.requestAdapter())) throw new Error('找不到可用的 GPU（WebGPU adapter）');
-  const engine = await CreateMLCEngine(modelId, { initProgressCallback: onProgress });
+  const adapter = await navigator.gpu.requestAdapter();
+  if (!adapter) throw new Error('找不到可用的 GPU（WebGPU adapter）');
+  const runtimeModelId = resolveVariant(modelId, adapter.features.has('shader-f16'));
+  const engine = await CreateMLCEngine(runtimeModelId, { initProgressCallback: onProgress });
   let interrupted = false;
   return {
+    runtimeModelId,
     async stream(messages, { onText }) {
       interrupted = false;
       const chunks = await engine.chat.completions.create({

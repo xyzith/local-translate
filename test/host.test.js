@@ -143,3 +143,12 @@ test('switching model mid-job reruns that job on the new model instead of droppi
   const doneIds = hostPort.sent.filter((m) => m.done).map((m) => m.id);
   assert.deepEqual(doneIds, [1, 2]);
 });
+
+test('status reports the model build the engine actually runs', async () => {
+  const createEngine = async () => ({ runtimeModelId: 'm-q4f32_1-MLC', stream: async () => ({ tps: 1 }), interrupt() {} });
+  const host = createHost({ createEngine, cache: memoryCache(), modelId: 'm-q4f16_1-MLC' });
+  const { content } = await connect(host);
+  content.postMessage(job(1));
+  for (let i = 0; i < 5; i++) await settle();
+  assert.equal(host.status().runtimeModelId, 'm-q4f32_1-MLC');
+});

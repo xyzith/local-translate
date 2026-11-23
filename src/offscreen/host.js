@@ -2,7 +2,7 @@ import { buildMessages, stripThink } from '../shared/prompt.js';
 import { cacheKey } from './cache.js';
 
 export function createHost({ createEngine, cache, modelId }) {
-  const status = { state: 'idle', modelId, progress: 0, text: '', tps: null, error: null };
+  const status = { state: 'idle', modelId, runtimeModelId: null, progress: 0, text: '', tps: null, error: null };
   let enginePromise = null;
   let engine = null;
   let queue = [];
@@ -17,7 +17,7 @@ export function createHost({ createEngine, cache, modelId }) {
       (e) => {
         if (promise !== enginePromise) { e.unload?.(); throw new Error('模型已切換'); }
         engine = e;
-        status.state = 'ready';
+        Object.assign(status, { state: 'ready', runtimeModelId: e.runtimeModelId ?? status.modelId });
         return e;
       },
       (err) => {
@@ -98,7 +98,7 @@ export function createHost({ createEngine, cache, modelId }) {
       engine?.unload?.();
       engine = null;
       enginePromise = null;
-      Object.assign(status, { modelId: next, state: 'idle', progress: 0, text: '', tps: null, error: null });
+      Object.assign(status, { modelId: next, runtimeModelId: null, state: 'idle', progress: 0, text: '', tps: null, error: null });
     },
     handlePort(port) {
       port.onMessage.addListener((msg) => {

@@ -9,8 +9,10 @@ function describe(status) {
   switch (status.state) {
     case 'loading':
       return { text: `下載／載入模型中 ${Math.round(status.progress * 100)}%\n${status.text}`, progress: status.progress };
-    case 'ready':
-      return { text: status.tps ? `就緒・最近一段 ${status.tps.toFixed(1)} tokens/s` : '就緒' };
+    case 'ready': {
+      const fallback = status.runtimeModelId?.includes('q4f32') ? '\n（GPU 不支援 f16，改跑 q4f32 版，會比較慢）' : '';
+      return { text: (status.tps ? `就緒・最近一段 ${status.tps.toFixed(1)} tokens/s` : '就緒') + fallback };
+    }
     case 'error':
       return { text: `錯誤：${status.error}`, error: true };
     default:
