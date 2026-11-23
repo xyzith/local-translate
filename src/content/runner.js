@@ -12,7 +12,7 @@ export function injectStyle(doc) {
   doc.head.append(style);
 }
 
-export function createRunner({ contextOf, inside = false }) {
+export function createRunner({ contextOf }) {
   const client = createClient({
     async connect() {
       const res = await chrome.runtime.sendMessage({ type: 'ensure-offscreen' });
@@ -23,7 +23,7 @@ export function createRunner({ contextOf, inside = false }) {
 
   return async function run(seg, signal) {
     if (signal.aborted || !seg.el.isConnected) return;
-    const view = attachTranslation(seg.el, { inside });
+    const view = attachTranslation(seg.el);
     try {
       await client.translate(
         { text: seg.text, context: contextOf(seg) },

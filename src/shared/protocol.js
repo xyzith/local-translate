@@ -8,4 +8,4 @@ export const MODELS = [
 ];
 export const DEFAULT_MODEL = 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
 
-export const SETTINGS_DEFAULTS = { enabled: true, modelId: DEFAULT_MODEL };
+export const SETTINGS_DEFAULTS = { modelId: DEFAULT_MODEL };

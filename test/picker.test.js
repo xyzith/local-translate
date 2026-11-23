@@ -6,9 +6,10 @@ import { createPicker } from '../src/content/picker.js';
 function setup() {
   const doc = domFrom('<p id="a">First <b id="b">para</b>.</p><p id="c">Second.</p><pre><code id="code">x</code></pre>');
   const queued = [];
-  const picker = createPicker({ doc, translate: (el) => queued.push(el) });
+  const cancelled = [];
+  const picker = createPicker({ doc, translate: (el) => queued.push(el), cancel: (el) => cancelled.push(el) });
   const rightClick = (id) => doc.getElementById(id).dispatchEvent(new doc.defaultView.MouseEvent('contextmenu', { bubbles: true }));
-  return { doc, queued, picker, rightClick };
+  return { doc, queued, cancelled, picker, rightClick };
 }
 
 test('menu command translates the block that was right-clicked', () => {
@@ -18,8 +19,8 @@ test('menu command translates the block that was right-clicked', () => {
   assert.deepEqual(queued, [doc.getElementById('a')]);
 });
 
-test('the same command on an already translated block removes the translation', () => {
-  const { doc, queued, picker, rightClick } = setup();
+test('the same command on an already translated block removes the translation and cancels its job', () => {
+  const { doc, queued, cancelled, picker, rightClick } = setup();
   const a = doc.getElementById('a');
   rightClick('b');
   picker.command();
@@ -29,6 +30,7 @@ test('the same command on an already translated block removes the translation', 
   assert.equal(picker.command(), 'removed');
   assert.equal(a.querySelector('.rlt-tr'), null);
   assert.equal(queued.length, 1);
+  assert.deepEqual(cancelled, [a]);
 });
 
 test('right-clicking on code or with no prior right-click does nothing', () => {

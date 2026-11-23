@@ -4,7 +4,7 @@ import fs from 'node:fs';
 const common = { bundle: true, target: 'chrome124', outdir: 'dist', logLevel: 'warning' };
 
 fs.rmSync('dist', { recursive: true, force: true });
-await build({ ...common, format: 'iife', entryPoints: { content: 'src/content/main.js', generic: 'src/content/generic.js' } });
+await build({ ...common, format: 'iife', entryPoints: { content: 'src/content/main.js' } });
 await build({
   ...common,
   format: 'esm',

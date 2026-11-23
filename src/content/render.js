@@ -8,27 +8,21 @@ export const STYLE = `
 
 const CLASS = 'rlt-tr';
 
-function placesInside(el, inside) {
-  return inside || el.hasAttribute('slot') || el.tagName === 'LI';
-}
-
 function existingNode(el) {
-  const sibling = el.nextElementSibling;
-  return el.querySelector(`:scope > .${CLASS}`) || (sibling?.classList.contains(CLASS) ? sibling : null);
+  return el.querySelector(`:scope > .${CLASS}`);
 }
 
-function createNode(el, inside) {
-  const node = el.ownerDocument.createElement(inside ? 'span' : 'div');
+function createNode(el) {
+  const node = el.ownerDocument.createElement('span');
   node.className = CLASS;
   node.setAttribute('lang', 'zh-Hant');
-  if (inside) el.insertBefore(node, el.querySelector(':scope > ul, :scope > ol'));
-  else el.after(node);
+  el.insertBefore(node, el.querySelector(':scope > ul, :scope > ol'));
   return node;
 }
 
-export function attachTranslation(el, { inside = false } = {}) {
+export function attachTranslation(el) {
   el.dataset.rlt = '1';
-  const node = existingNode(el) || createNode(el, placesInside(el, inside));
+  const node = existingNode(el) || createNode(el);
   node.className = `${CLASS} rlt-pending`;
   node.textContent = '';
   return {
@@ -51,7 +45,7 @@ export function attachTranslation(el, { inside = false } = {}) {
 
 export function removeTranslation(target) {
   if (target.classList.contains(CLASS)) {
-    const owner = [target.previousElementSibling, target.parentElement].find((n) => n?.dataset.rlt);
+    const owner = target.parentElement;
     target.remove();
     owner?.removeAttribute('data-rlt');
     return true;
@@ -60,9 +54,4 @@ export function removeTranslation(target) {
   existingNode(target)?.remove();
   target.removeAttribute('data-rlt');
   return true;
-}
-
-export function detachAll(root) {
-  root.querySelectorAll(`.${CLASS}`).forEach((n) => n.remove());
-  root.querySelectorAll('[data-rlt]').forEach((el) => el.removeAttribute('data-rlt'));
 }
