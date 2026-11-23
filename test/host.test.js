@@ -240,3 +240,52 @@ test('a second English answer is shown as-is but not cached', async () => {
   assert.ok(hostPort.sent.at(-1).done);
   assert.equal(cache.map.size, 0);
 });
+
+function recordingEngine(outputFor) {
+  const seen = [];
+  const createEngine = async () => ({
+    async stream(messages, { onText }) { seen.push(messages); onText(outputFor(messages.at(-1).content)); return { tps: 5 }; },
+    interrupt() {},
+  });
+  return { seen, createEngine };
+}
+const zh = (ask) => `譯：${ask.slice(-6)}`;
+
+test('later paragraphs in the same tab see the last two translations', async () => {
+  const { seen, createEngine } = recordingEngine(zh);
+  const host = createHost({ createEngine, cache: memoryCache(), modelId: 'm' });
+  const { content } = await connect(host);
+  for (const [i, t] of ['One para.', 'Two para.', 'Three para.', 'Four para.'].entries()) content.postMessage(job(i + 1, t));
+  for (let i = 0; i < 12; i++) await settle();
+  const assistantTurns = (msgs) => msgs.filter((m) => m.role === 'assistant').map((m) => m.content);
+  assert.deepEqual(assistantTurns(seen[1]), [zh('One para.')]);
+  assert.deepEqual(assistantTurns(seen[3]), [zh('Two para.'), zh('Three para.')]);
+
+  const other = await connect(host);
+  other.content.postMessage(job(9, 'Other tab.'));
+  for (let i = 0; i < 4; i++) await settle();
+  assert.ok(!seen.at(-1).some((m) => m.content === zh('Three para.')));
+});
+
+test('a cache hit also becomes history for the next paragraph', async () => {
+  const { seen, createEngine } = recordingEngine(zh);
+  const cache = memoryCache();
+  await cache.put(await cacheKey('m', 'Cached one.'), '快取的譯文');
+  const host = createHost({ createEngine, cache, modelId: 'm' });
+  const { content } = await connect(host);
+  content.postMessage(job(1, 'Cached one.'));
+  content.postMessage(job(2, 'Fresh one.'));
+  for (let i = 0; i < 8; i++) await settle();
+  assert.equal(seen.length, 1);
+  assert.ok(seen[0].some((m) => m.role === 'assistant' && m.content === '快取的譯文'));
+});
+
+test('long paragraphs are not kept as history so prompts stay inside the context window', async () => {
+  const { seen, createEngine } = recordingEngine(zh);
+  const host = createHost({ createEngine, cache: memoryCache(), modelId: 'm' });
+  const { content } = await connect(host);
+  content.postMessage(job(1, 'Long. '.repeat(200)));
+  content.postMessage(job(2, 'Short.'));
+  for (let i = 0; i < 8; i++) await settle();
+  assert.ok(!seen[1].some((m) => m.role === 'assistant' && m.content === zh('Long. '.repeat(200))));
+});

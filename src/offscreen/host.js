@@ -1,6 +1,9 @@
 import { buildMessages, looksUntranslated, RETRY_PROMPT, stripThink } from '../shared/prompt.js';
 import { cacheKey } from './cache.js';
 
+const HISTORY_SIZE = 2;
+const HISTORY_MAX_CHARS = 600;
+
 const errorText = (err) => String(err?.message || err || '未知錯誤');
 const release = (eng) => Promise.resolve(eng?.unload?.()).catch(() => {});
 
@@ -11,6 +14,13 @@ export function createHost({ createEngine, cache, modelId }) {
   let queue = [];
   let running = null;
   let draining = false;
+  const histories = new WeakMap();
+
+  function remember(port, text, translation) {
+    if (text.length > HISTORY_MAX_CHARS) return;
+    const history = [...(histories.get(port) || []), { text, translation }];
+    histories.set(port, history.slice(-HISTORY_SIZE));
+  }
 
   function ensureEngine() {
     if (enginePromise) return enginePromise;
@@ -46,6 +56,7 @@ export function createHost({ createEngine, cache, modelId }) {
     const hit = await cache.get(key);
     if (job.cancelled) return;
     if (hit != null) {
+      remember(port, text, hit);
       post(port, { id, text: hit });
       post(port, { id, done: true });
       return;
@@ -61,7 +72,7 @@ export function createHost({ createEngine, cache, modelId }) {
       out = stripThink(raw);
       post(port, { id, text: out });
     };
-    const messages = buildMessages({ text, context });
+    const messages = buildMessages({ text, context, history: histories.get(port) || [] });
     let { tps, interrupted } = await eng.stream(messages, { onText });
     if (interrupted || job.cancelled || job.restart) return;
     if (looksUntranslated(out)) {
@@ -70,7 +81,10 @@ export function createHost({ createEngine, cache, modelId }) {
       if (interrupted || job.cancelled || job.restart) return;
     }
     job.phase = 'saving';
-    if (!looksUntranslated(out)) await cache.put(key, out).catch(() => {});
+    if (!looksUntranslated(out)) {
+      remember(port, text, out);
+      await cache.put(key, out).catch(() => {});
+    }
     status.tps = tps;
     post(port, { id, done: true, tps });
   }

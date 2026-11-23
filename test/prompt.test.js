@@ -41,3 +41,17 @@ test('stripThink removes finished and still-streaming think blocks', () => {
   assert.equal(stripThink('<thi'), '');
   assert.equal(stripThink('直接翻譯'), '直接翻譯');
 });
+
+test('recent translations replace the fixed example so terms carry over', () => {
+  const history = [
+    { text: 'Shadow Knight - Moved the Strength debuff.', translation: '暗影騎士 - 移動了力量減益。' },
+    { text: 'Necromancer - Fixed a slot.', translation: '死靈法師 - 修正了一個欄位。' },
+  ];
+  const msgs = buildMessages({ text: 'Shadow Knight - New stance.', context: {}, history });
+  const turns = msgs.slice(1, -1);
+  assert.deepEqual(turns.map((m) => m.role), ['user', 'assistant', 'user', 'assistant']);
+  assert.ok(turns[0].content.endsWith('Shadow Knight - Moved the Strength debuff.'));
+  assert.equal(turns[1].content, '暗影騎士 - 移動了力量減益。');
+  assert.equal(turns[3].content, '死靈法師 - 修正了一個欄位。');
+  assert.ok(!msgs.some((m) => m.content.includes('login page')));
+});
