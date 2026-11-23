@@ -62,3 +62,12 @@ test('remove() clears a cancelled translation so the paragraph can be picked up 
   assert.equal(doc.querySelectorAll('.rlt-tr').length, 0);
   assert.equal(p.dataset.rlt, undefined);
 });
+
+test('a list item with a nested list gets its translation before the sub-list', () => {
+  const doc = domFrom('<div slot="comment"><ul><li>parent item<ul><li>child</li></ul></li></ul></div>');
+  const li = doc.querySelector('li');
+  attachTranslation(li).update('父項目');
+  assert.equal(li.querySelector(':scope > ul').previousElementSibling.textContent, '父項目');
+  attachTranslation(li).update('再一次');
+  assert.equal(li.querySelectorAll(':scope > .rlt-tr').length, 1);
+});

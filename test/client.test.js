@@ -56,3 +56,29 @@ test('host disconnect fails pending requests and the next call reconnects', asyn
   assert.deepEqual(again, { tps: 1 });
   assert.equal(pairs.length, 2);
 });
+
+test('aborting while still connecting rejects without sending a request', async () => {
+  const got = [];
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const client = createClient({
+    connect: async () => {
+      await gate;
+      const pair = fakePortPair();
+      pair.host.onMessage.addListener((m) => got.push(m));
+      return pair.content;
+    },
+  });
+  const ac = new AbortController();
+  const p = client.translate({ text: 'x', context: {} }, { onText() {}, signal: ac.signal });
+  ac.abort();
+  release();
+  await assert.rejects(p, { name: 'AbortError' });
+  await settle();
+  assert.equal(got.length, 0);
+});
+
+test('an empty error message still rejects instead of hanging', async () => {
+  const { client } = setup((msg, port) => port.postMessage({ id: msg.id, error: '' }));
+  await assert.rejects(client.translate({ text: 'x', context: {} }, { onText() {}, signal: new AbortController().signal }));
+});

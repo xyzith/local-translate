@@ -13,15 +13,15 @@ function placesInside(el) {
 }
 
 function existingNode(el) {
-  const candidate = placesInside(el) ? el.lastElementChild : el.nextElementSibling;
-  return candidate?.classList.contains(CLASS) ? candidate : null;
+  if (placesInside(el)) return el.querySelector(`:scope > .${CLASS}`);
+  return el.nextElementSibling?.classList.contains(CLASS) ? el.nextElementSibling : null;
 }
 
 function createNode(el) {
   const node = el.ownerDocument.createElement(placesInside(el) ? 'span' : 'div');
   node.className = CLASS;
   node.setAttribute('lang', 'zh-Hant');
-  if (placesInside(el)) el.append(node);
+  if (placesInside(el)) el.insertBefore(node, el.querySelector(':scope > ul, :scope > ol'));
   else el.after(node);
   return node;
 }

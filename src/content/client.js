@@ -9,7 +9,7 @@ export function createClient({ connect }) {
       port.onMessage.addListener((msg) => {
         const req = pending.get(msg.id);
         if (!req) return;
-        if (msg.error) req.reject(new Error(msg.error));
+        if ('error' in msg) req.reject(new Error(msg.error || '未知錯誤'));
         else if (msg.done) req.resolve({ tps: msg.tps });
         else req.onText(msg.text);
       });
@@ -26,6 +26,7 @@ export function createClient({ connect }) {
   return {
     async translate({ text, context }, { onText, signal }) {
       const port = await getPort();
+      if (signal.aborted) throw new DOMException('aborted', 'AbortError');
       const id = nextId++;
       return new Promise((resolve, reject) => {
         const finish = (fn) => (value) => {

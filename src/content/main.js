@@ -6,6 +6,7 @@ import { createScheduler } from './scheduler.js';
 import { createClient } from './client.js';
 
 const SCAN_DEBOUNCE_MS = 300;
+const SCAN_MAX_WAIT_MS = 1500;
 const PREFETCH_MARGIN = '300px 0px';
 
 const client = createClient({
@@ -17,7 +18,7 @@ const client = createClient({
 });
 
 async function translateSegment(seg, signal) {
-  if (signal.aborted) return;
+  if (signal.aborted || !seg.el.isConnected) return;
   const view = attachTranslation(seg.el);
   try {
     await client.translate(
@@ -36,6 +37,7 @@ let segOf = new WeakMap();
 let enabled = false;
 let href = location.href;
 let timer = null;
+let firstPending = 0;
 
 const io = new IntersectionObserver((entries) => {
   for (const entry of entries) {
@@ -81,8 +83,10 @@ new MutationObserver((mutations) => {
   } else if (mutations.every(insideTranslation)) {
     return;
   }
+  firstPending ||= Date.now();
   clearTimeout(timer);
-  timer = setTimeout(scan, SCAN_DEBOUNCE_MS);
+  const wait = Math.max(0, Math.min(SCAN_DEBOUNCE_MS, firstPending + SCAN_MAX_WAIT_MS - Date.now()));
+  timer = setTimeout(() => { firstPending = 0; scan(); }, wait);
 }).observe(document.body, { childList: true, subtree: true });
 
 const style = document.createElement('style');

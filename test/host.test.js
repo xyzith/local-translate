@@ -152,3 +152,50 @@ test('status reports the model build the engine actually runs', async () => {
   for (let i = 0; i < 5; i++) await settle();
   assert.equal(host.status().runtimeModelId, 'm-q4f32_1-MLC');
 });
+
+test('non-Error throws still produce a readable error string', async () => {
+  const createEngine = async () => { throw 'device lost'; };
+  const host = createHost({ createEngine, cache: memoryCache(), modelId: 'm' });
+  const { content, hostPort } = await connect(host);
+  content.postMessage(job(1));
+  await settle(); await settle();
+  assert.deepEqual(hostPort.sent.at(-1), { id: 1, error: 'device lost' });
+});
+
+test('empty output is not cached; a failing cache write does not fail the job', async () => {
+  const { createEngine } = fakeEngineFactory({ chunks: ['  '] });
+  const cache = memoryCache();
+  const host = createHost({ createEngine, cache, modelId: 'm' });
+  const { content, hostPort } = await connect(host);
+  content.postMessage(job(1));
+  for (let i = 0; i < 5; i++) await settle();
+  assert.equal(cache.map.size, 0);
+
+  const broken = { get: async () => undefined, put: async () => { throw new Error('quota'); } };
+  const host2 = createHost({ createEngine: fakeEngineFactory().createEngine, cache: broken, modelId: 'm' });
+  const c2 = await connect(host2);
+  c2.content.postMessage(job(2));
+  for (let i = 0; i < 8; i++) await settle();
+  assert.ok(c2.hostPort.sent.at(-1).done);
+  assert.ok(hostPort.sent.at(-1).done);
+});
+
+test('switching model while the old one is still loading does not wait for it', async () => {
+  const made = [];
+  let progressA;
+  const createEngine = (modelId, onProgress) => {
+    made.push(modelId);
+    if (modelId === 'A') { progressA = onProgress; return new Promise(() => {}); }
+    return Promise.resolve({ stream: async () => ({ tps: 3 }), interrupt() {} });
+  };
+  const host = createHost({ createEngine, cache: memoryCache(), modelId: 'A' });
+  const { content, hostPort } = await connect(host);
+  content.postMessage(job(1));
+  await settle();
+  host.setModel('B');
+  progressA({ progress: 0.5, text: 'stale' });
+  for (let i = 0; i < 5; i++) await settle();
+  assert.deepEqual(made, ['A', 'B']);
+  assert.deepEqual(hostPort.sent.at(-1), { id: 1, done: true, tps: 3 });
+  assert.notEqual(host.status().text, 'stale');
+});

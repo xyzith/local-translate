@@ -39,14 +39,27 @@ test('messages include context, text and Taiwan Traditional Chinese instruction'
   assert.ok(!user.includes('/no_think'));
 });
 
-test('Qwen3 gets thinking disabled', () => {
-  const msgs = buildMessages({ text: 'x', context: {}, modelId: 'Qwen3-1.7B-q4f16_1-MLC' });
-  assert.ok(msgs.at(-1).content.endsWith('/no_think'));
-});
 
 test('stripThink removes finished and still-streaming think blocks', () => {
   assert.equal(stripThink('<think>\nhmm\n</think>\n\n你好'), '你好');
   assert.equal(stripThink('<think>still going'), '');
   assert.equal(stripThink('<thi'), '');
   assert.equal(stripThink('直接翻譯'), '直接翻譯');
+});
+
+test('parent context excludes our own translation of the parent', () => {
+  const d = domFrom(`<shreddit-post post-title="T"></shreddit-post>
+<shreddit-comment thingid="t1_a"><div slot="comment"><p>Parent text.</p><div class="rlt-tr">父留言譯文</div></div>
+  <shreddit-comment thingid="t1_b" parentid="t1_a"><div slot="comment"><p>Child.</p></div></shreddit-comment>
+</shreddit-comment>`);
+  const child = findSegments(d).find((s) => s.text === 'Child.');
+  assert.equal(buildContext(child).parentText, 'Parent text.');
+});
+
+test('context is fenced in tags and the paragraph to translate comes last', () => {
+  const [, user] = buildMessages({ text: 'Child.', context: { postTitle: 'T', parentText: 'P' }, modelId: 'Qwen3-1.7B-q4f16_1-MLC' });
+  assert.match(user.content, /<title>T<\/title>/);
+  assert.match(user.content, /<parent>P<\/parent>/);
+  assert.ok(user.content.trimEnd().endsWith('Child.'));
+  assert.ok(!user.content.includes('/no_think'));
 });

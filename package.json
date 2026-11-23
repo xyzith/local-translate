@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --test"
+    "test": "node --test --test-timeout=5000"
   },
   "dependencies": {
     "@mlc-ai/web-llm": "0.2.87"
