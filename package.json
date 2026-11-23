@@ -1,0 +1,16 @@
+{
+  "name": "reddit-local-translate",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@mlc-ai/web-llm": "0.2.87"
+  },
+  "devDependencies": {
+    "esbuild": "0.27.0",
+    "jsdom": "27.0.0"
+  }
+}
