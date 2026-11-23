@@ -206,3 +206,37 @@ test('cache keys change with the prompt version', async () => {
   const expected = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map((b) => b.toString(16).padStart(2, '0')).join('');
   assert.equal(await cacheKey('m', 'Hello'), expected);
 });
+
+test('output that is not Chinese is retried once with a correction turn', async () => {
+  const outputs = ['The spell grants All Access.', '這個法術需要 All Access 會員資格。'];
+  const seen = [];
+  const createEngine = async () => ({
+    async stream(messages, { onText }) { seen.push(messages); onText(outputs[seen.length - 1]); return { tps: 5 }; },
+    interrupt() {},
+  });
+  const cache = memoryCache();
+  const host = createHost({ createEngine, cache, modelId: 'm' });
+  const { content, hostPort } = await connect(host);
+  content.postMessage(job(1, 'The spell auto-grant requires All Access membership.'));
+  for (let i = 0; i < 6; i++) await settle();
+  assert.equal(seen.length, 2);
+  assert.deepEqual(seen[1].slice(-2).map((m) => m.role), ['assistant', 'user']);
+  assert.equal(hostPort.sent.filter((m) => 'text' in m).at(-1).text, '這個法術需要 All Access 會員資格。');
+  assert.deepEqual([...cache.map.values()], ['這個法術需要 All Access 會員資格。']);
+});
+
+test('a second English answer is shown as-is but not cached', async () => {
+  let calls = 0;
+  const createEngine = async () => ({
+    async stream(messages, { onText }) { calls++; onText('Still English.'); return { tps: 5 }; },
+    interrupt() {},
+  });
+  const cache = memoryCache();
+  const host = createHost({ createEngine, cache, modelId: 'm' });
+  const { content, hostPort } = await connect(host);
+  content.postMessage(job(1));
+  for (let i = 0; i < 6; i++) await settle();
+  assert.equal(calls, 2);
+  assert.ok(hostPort.sent.at(-1).done);
+  assert.equal(cache.map.size, 0);
+});

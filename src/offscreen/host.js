@@ -1,4 +1,4 @@
-import { buildMessages, stripThink } from '../shared/prompt.js';
+import { buildMessages, looksUntranslated, RETRY_PROMPT, stripThink } from '../shared/prompt.js';
 import { cacheKey } from './cache.js';
 
 const errorText = (err) => String(err?.message || err || '未知錯誤');
@@ -61,10 +61,16 @@ export function createHost({ createEngine, cache, modelId }) {
       out = stripThink(raw);
       post(port, { id, text: out });
     };
-    const { tps, interrupted } = await eng.stream(buildMessages({ text, context }), { onText });
+    const messages = buildMessages({ text, context });
+    let { tps, interrupted } = await eng.stream(messages, { onText });
     if (interrupted || job.cancelled || job.restart) return;
+    if (looksUntranslated(out)) {
+      const retry = [...messages, { role: 'assistant', content: out }, { role: 'user', content: RETRY_PROMPT }];
+      ({ tps, interrupted } = await eng.stream(retry, { onText }));
+      if (interrupted || job.cancelled || job.restart) return;
+    }
     job.phase = 'saving';
-    if (out) await cache.put(key, out).catch(() => {});
+    if (!looksUntranslated(out)) await cache.put(key, out).catch(() => {});
     status.tps = tps;
     post(port, { id, done: true, tps });
   }
