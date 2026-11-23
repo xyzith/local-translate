@@ -42,6 +42,10 @@ export function attachTranslation(el) {
       node.classList.add('rlt-error');
       node.textContent = `⚠ 翻譯失敗：${message}`;
     },
+    remove() {
+      node.remove();
+      el.removeAttribute('data-rlt');
+    },
   };
 }
 

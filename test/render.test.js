@@ -54,3 +54,11 @@ test('detachAll restores the original markup', () => {
   detachAll(doc);
   assert.equal(doc.body.innerHTML, before);
 });
+
+test('remove() clears a cancelled translation so the paragraph can be picked up again', () => {
+  const doc = domFrom(HTML);
+  const p = doc.querySelector('p');
+  attachTranslation(p).remove();
+  assert.equal(doc.querySelectorAll('.rlt-tr').length, 0);
+  assert.equal(p.dataset.rlt, undefined);
+});
