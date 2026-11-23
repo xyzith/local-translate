@@ -2,7 +2,9 @@ import { buildMessages, looksUntranslated, RETRY_PROMPT, stripThink } from '../s
 import { cacheKey } from './cache.js';
 
 const HISTORY_SIZE = 2;
-const HISTORY_MAX_CHARS = 600;
+const HISTORY_MAX_CHARS = 300;
+
+const ENGINE_LOST = /already been disposed|device (was )?lost/i;
 
 const errorText = (err) => String(err?.message || err || '未知錯誤');
 const release = (eng) => Promise.resolve(eng?.unload?.()).catch(() => {});
@@ -98,12 +100,24 @@ export function createHost({ createEngine, cache, modelId }) {
       try {
         await runJob(job);
       } catch (err) {
-        if (!job.cancelled && !job.restart) post(job.port, { id: job.msg.id, error: errorText(err) });
+        if (ENGINE_LOST.test(errorText(err)) && !job.reloaded && !job.cancelled) {
+          dropEngine();
+          queue.unshift({ port: job.port, msg: job.msg, reloaded: true });
+        } else if (!job.cancelled && !job.restart) {
+          post(job.port, { id: job.msg.id, error: errorText(err) });
+        }
       }
       if (job.restart && !job.cancelled) queue.unshift({ port: job.port, msg: job.msg });
       running = null;
     }
     draining = false;
+  }
+
+  function dropEngine() {
+    release(engine);
+    engine = null;
+    enginePromise = null;
+    Object.assign(status, { state: 'idle', runtimeModelId: null, text: '顯卡被重置，重新載入模型中…' });
   }
 
   function cancelWhere(match) {

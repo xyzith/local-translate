@@ -2,6 +2,7 @@ import { CreateMLCEngine } from '@mlc-ai/web-llm';
 import { resolveVariant } from './variant.js';
 
 const MAX_TOKENS = 2048;
+const PREFILL_CHUNK_TOKENS = 256;
 
 export async function createWebLLMEngine(modelId, onProgress) {
   if (!navigator.gpu) throw new Error('這個瀏覽器沒有 WebGPU');
@@ -9,6 +10,10 @@ export async function createWebLLMEngine(modelId, onProgress) {
   if (!adapter) throw new Error('找不到可用的 GPU（WebGPU adapter）');
   const runtimeModelId = resolveVariant(modelId, adapter.features.has('shader-f16'));
   const engine = await CreateMLCEngine(runtimeModelId, { initProgressCallback: onProgress });
+  // Smaller prefill batches keep each GPU job under the Windows TDR timeout (DXGI_ERROR_DEVICE_HUNG on iGPUs).
+  // No public option exists; this private field is verified against web-llm 0.2.87 only.
+  const pipeline = engine.loadedModelIdToPipeline?.get(runtimeModelId);
+  if (pipeline?.prefillChunkSize > PREFILL_CHUNK_TOKENS) pipeline.prefillChunkSize = PREFILL_CHUNK_TOKENS;
   let interrupted = false;
   return {
     runtimeModelId,

@@ -284,9 +284,48 @@ test('long paragraphs are not kept as history so prompts stay inside the context
   const { seen, createEngine } = recordingEngine(zh);
   const host = createHost({ createEngine, cache: memoryCache(), modelId: 'm' });
   const { content } = await connect(host);
-  content.postMessage(job(1, 'Long. '.repeat(200)));
+  content.postMessage(job(1, 'Long. '.repeat(60)));
   content.postMessage(job(2, 'Short.'));
   for (let i = 0; i < 8; i++) await settle();
   assert.equal(seen.length, 2);
   assert.ok(!seen[1].slice(1, -1).some((m) => m.content.includes('Long. Long.')));
+});
+
+test('a dead engine (GPU reset) is reloaded and the paragraph retried once', async () => {
+  const made = [];
+  const createEngine = async () => {
+    const n = made.length;
+    const engine = {
+      async stream(messages, { onText }) {
+        if (n === 0) throw new Error('Object has already been disposed');
+        onText('重新載入後的譯文');
+        return { tps: 4 };
+      },
+      interrupt() {},
+    };
+    made.push(engine);
+    return engine;
+  };
+  const host = createHost({ createEngine, cache: memoryCache(), modelId: 'm' });
+  const { content, hostPort } = await connect(host);
+  content.postMessage(job(1));
+  content.postMessage(job(2, 'Next.'));
+  for (let i = 0; i < 10; i++) await settle();
+  assert.equal(made.length, 2);
+  assert.deepEqual(hostPort.sent.filter((m) => m.done).map((m) => m.id), [1, 2]);
+  assert.ok(!hostPort.sent.some((m) => m.error));
+});
+
+test('an engine that dies again right after reloading reports the error instead of looping', async () => {
+  let loads = 0;
+  const createEngine = async () => {
+    loads++;
+    return { async stream() { throw new Error('Device was lost'); }, interrupt() {} };
+  };
+  const host = createHost({ createEngine, cache: memoryCache(), modelId: 'm' });
+  const { content, hostPort } = await connect(host);
+  content.postMessage(job(1));
+  for (let i = 0; i < 10; i++) await settle();
+  assert.equal(loads, 2);
+  assert.match(hostPort.sent.at(-1).error, /Device was lost/);
 });
