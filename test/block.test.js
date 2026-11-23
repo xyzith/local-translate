@@ -38,3 +38,22 @@ test('ignores code, navigation and empty blocks', () => {
 test('text nodes resolve through their parent', () => {
   assert.equal(findBlock($('p').firstChild), $('p'));
 });
+
+test('findBlocksInRange returns every block the selection touches, in page order', async () => {
+  const { findBlocksInRange } = await import('../src/content/block.js');
+  const d = domFrom(`<div id="root"><h2 id="h">Heading</h2><p id="p1">First <b>para</b>.</p>
+    <ul><li id="li">Item</li></ul><pre><code>skip()</code></pre><p id="p2">Second para.</p><p id="p3">Not selected.</p></div>`);
+  const range = d.createRange();
+  range.setStart(d.querySelector('#p1 b').firstChild, 2);
+  range.setEnd(d.getElementById('p2').firstChild, 3);
+  assert.deepEqual(findBlocksInRange(range).map((b) => b.id), ['p1', 'li', 'p2']);
+});
+
+test('a selection inside one paragraph yields just that paragraph', async () => {
+  const { findBlocksInRange } = await import('../src/content/block.js');
+  const d = domFrom('<p id="p">Hello there world</p>');
+  const range = d.createRange();
+  range.setStart(d.getElementById('p').firstChild, 1);
+  range.setEnd(d.getElementById('p').firstChild, 5);
+  assert.deepEqual(findBlocksInRange(range).map((b) => b.id), ['p']);
+});

@@ -1,9 +1,22 @@
-import { findBlock } from './block.js';
+import { findBlock, findBlocksInRange } from './block.js';
 import { removeTranslation } from './render.js';
 
 export function createPicker({ doc, translate, cancel }) {
   let target = null;
   doc.addEventListener('contextmenu', (e) => { target = e.target; }, true);
+
+  const untranslate = (block) => {
+    cancel(block);
+    removeTranslation(block);
+  };
+
+  function selectedBlocks(el) {
+    const sel = doc.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) return [];
+    const range = sel.getRangeAt(0);
+    return range.intersectsNode(el) ? findBlocksInRange(range) : [];
+  }
+
   return {
     command() {
       const el = target?.nodeType === 1 ? target : target?.parentElement;
@@ -11,18 +24,18 @@ export function createPicker({ doc, translate, cancel }) {
       if (!el) return 'none';
       const translation = el.closest('.rlt-tr');
       if (translation) {
-        cancel(translation.parentElement);
-        removeTranslation(translation);
+        untranslate(translation.parentElement);
         return 'removed';
       }
-      const block = findBlock(el);
-      if (!block) return 'none';
-      if (block.dataset.rlt) {
-        cancel(block);
-        removeTranslation(block);
+      const selected = selectedBlocks(el);
+      const blocks = selected.length ? selected : [findBlock(el)].filter(Boolean);
+      if (!blocks.length) return 'none';
+      const fresh = blocks.filter((b) => !b.dataset.rlt);
+      if (!fresh.length) {
+        blocks.forEach(untranslate);
         return 'removed';
       }
-      translate(block);
+      fresh.forEach(translate);
       return 'translate';
     },
   };

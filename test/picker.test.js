@@ -40,3 +40,36 @@ test('right-clicking on code or with no prior right-click does nothing', () => {
   assert.equal(picker.command(), 'none');
   assert.equal(queued.length, 0);
 });
+
+function selectFromTo(doc, startId, endId) {
+  const range = doc.createRange();
+  range.setStart(doc.getElementById(startId).firstChild, 0);
+  range.setEnd(doc.getElementById(endId).firstChild, 1);
+  const sel = doc.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+test('with a selection, every block in it is translated', () => {
+  const { doc, queued, picker, rightClick } = setup();
+  selectFromTo(doc, 'a', 'c');
+  rightClick('c');
+  assert.equal(picker.command(), 'translate');
+  assert.deepEqual(queued.map((el) => el.id), ['a', 'c']);
+});
+
+test('with a selection, already translated blocks are skipped; all translated means remove all', () => {
+  const { doc, queued, cancelled, picker, rightClick } = setup();
+  const a = doc.getElementById('a');
+  a.dataset.rlt = '1';
+  a.insertAdjacentHTML('beforeend', '<span class="rlt-tr">譯文</span>');
+  selectFromTo(doc, 'a', 'c');
+  rightClick('c');
+  picker.command();
+  assert.deepEqual(queued.map((el) => el.id), ['c']);
+  doc.getElementById('c').dataset.rlt = '1';
+  rightClick('c');
+  assert.equal(picker.command(), 'removed');
+  assert.deepEqual(cancelled.map((el) => el.id), ['a', 'c']);
+  assert.equal(doc.querySelectorAll('[data-rlt]').length, 0);
+});

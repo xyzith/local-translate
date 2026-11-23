@@ -31,7 +31,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 const MENU_ID = 'translate-block';
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({ id: MENU_ID, title: '翻譯這一段（再按一次取消）', contexts: ['page', 'selection', 'link'] });
+  chrome.contextMenus.create({ id: MENU_ID, title: '翻譯這一段／反白範圍（再按一次取消）', contexts: ['page', 'selection', 'link'] });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {

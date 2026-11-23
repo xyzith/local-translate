@@ -20,3 +20,18 @@ export function findBlock(node) {
   }
   return null;
 }
+
+const SHOW_TEXT = 4;
+
+export function findBlocksInRange(range) {
+  const root = range.commonAncestorContainer;
+  if (root.nodeType !== 1) return [findBlock(root)].filter(Boolean);
+  const blocks = new Set();
+  const walker = root.ownerDocument.createTreeWalker(root, SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!node.textContent.trim() || !range.intersectsNode(node)) continue;
+    const block = findBlock(node);
+    if (block) blocks.add(block);
+  }
+  return [...blocks];
+}
