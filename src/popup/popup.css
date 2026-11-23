@@ -1,0 +1,9 @@
+:root { color-scheme: light dark; --fg: #1a1a1b; --muted: #576f76; --bg: #fff; --err: #d93a00; }
+@media (prefers-color-scheme: dark) { :root { --fg: #d7dadc; --muted: #8ba2ad; --bg: #1a1a1b; --err: #ff6a3d; } }
+body { width: 300px; margin: 0; padding: 12px 14px; font: 13px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); }
+h1 { font-size: 14px; margin: 0 0 10px; }
+.row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+select { flex: 1; }
+#status { color: var(--muted); white-space: pre-line; }
+#status.error { color: var(--err); }
+progress { width: 100%; }

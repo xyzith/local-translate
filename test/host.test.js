@@ -129,3 +129,17 @@ test('idb cache round-trips', async () => {
   assert.equal(await cache.get('k'), '值');
   assert.equal(await cache.get('missing'), undefined);
 });
+
+test('switching model mid-job reruns that job on the new model instead of dropping it', async () => {
+  const { createEngine, made } = fakeEngineFactory({ chunks: ['a', 'ab', 'abc', 'abcd'] });
+  const host = createHost({ createEngine, cache: memoryCache(), modelId: 'A' });
+  const { content, hostPort } = await connect(host);
+  content.postMessage(job(1));
+  content.postMessage(job(2, 'queued'));
+  await settle(); await settle();
+  host.setModel('B');
+  for (let i = 0; i < 20; i++) await settle();
+  assert.deepEqual(made.map((e) => e.modelId), ['A', 'B']);
+  const doneIds = hostPort.sent.filter((m) => m.done).map((m) => m.id);
+  assert.deepEqual(doneIds, [1, 2]);
+});

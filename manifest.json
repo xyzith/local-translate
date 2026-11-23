@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Reddit 本機翻譯（實驗）",
+  "version": "0.1.0",
+  "description": "在瀏覽器內用 WebGPU 跑 Qwen 小模型，把新版 Reddit 逐段翻成繁體中文對照。",
+  "minimum_chrome_version": "124",
+  "permissions": ["storage", "offscreen"],
+  "host_permissions": ["https://www.reddit.com/*"],
+  "background": { "service_worker": "sw.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "Reddit 本機翻譯" },
+  "content_scripts": [
+    { "matches": ["https://www.reddit.com/*"], "js": ["content.js"], "run_at": "document_idle" }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
+}

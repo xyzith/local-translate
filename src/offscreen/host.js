@@ -13,11 +13,23 @@ export function createHost({ createEngine, cache, modelId }) {
     if (enginePromise) return enginePromise;
     Object.assign(status, { state: 'loading', progress: 0, error: null });
     const onProgress = ({ progress, text }) => Object.assign(status, { progress, text });
-    enginePromise = createEngine(status.modelId, onProgress).then(
-      (e) => { engine = e; status.state = 'ready'; return e; },
-      (err) => { enginePromise = null; Object.assign(status, { state: 'error', error: err.message }); throw err; },
+    const promise = createEngine(status.modelId, onProgress).then(
+      (e) => {
+        if (promise !== enginePromise) { e.unload?.(); throw new Error('模型已切換'); }
+        engine = e;
+        status.state = 'ready';
+        return e;
+      },
+      (err) => {
+        if (promise === enginePromise) {
+          enginePromise = null;
+          Object.assign(status, { state: 'error', error: err.message });
+        }
+        throw err;
+      },
     );
-    return enginePromise;
+    enginePromise = promise;
+    return promise;
   }
 
   function post(port, msg) {
@@ -36,7 +48,7 @@ export function createHost({ createEngine, cache, modelId }) {
       return;
     }
     const eng = await ensureEngine();
-    if (job.cancelled) return;
+    if (job.cancelled || job.restart) return;
     let out = '';
     const onText = (raw) => {
       if (job.cancelled) return;
@@ -55,11 +67,13 @@ export function createHost({ createEngine, cache, modelId }) {
     draining = true;
     while (queue.length) {
       running = queue.shift();
+      const job = running;
       try {
-        await runJob(running);
+        await runJob(job);
       } catch (err) {
-        if (!running.cancelled) post(running.port, { id: running.msg.id, error: err.message });
+        if (!job.cancelled && !job.restart) post(job.port, { id: job.msg.id, error: err.message });
       }
+      if (job.restart && !job.cancelled) queue.unshift({ port: job.port, msg: job.msg });
       running = null;
     }
     draining = false;
@@ -77,7 +91,10 @@ export function createHost({ createEngine, cache, modelId }) {
     status: () => ({ ...status }),
     setModel(next) {
       if (next === status.modelId) return;
-      cancelWhere(() => true);
+      if (running) {
+        running.restart = true;
+        engine?.interrupt();
+      }
       engine?.unload?.();
       engine = null;
       enginePromise = null;
