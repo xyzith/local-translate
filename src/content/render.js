@@ -8,27 +8,27 @@ export const STYLE = `
 
 const CLASS = 'rlt-tr';
 
-function placesInside(el) {
-  return el.hasAttribute('slot') || el.tagName === 'LI';
+function placesInside(el, inside) {
+  return inside || el.hasAttribute('slot') || el.tagName === 'LI';
 }
 
 function existingNode(el) {
-  if (placesInside(el)) return el.querySelector(`:scope > .${CLASS}`);
-  return el.nextElementSibling?.classList.contains(CLASS) ? el.nextElementSibling : null;
+  const sibling = el.nextElementSibling;
+  return el.querySelector(`:scope > .${CLASS}`) || (sibling?.classList.contains(CLASS) ? sibling : null);
 }
 
-function createNode(el) {
-  const node = el.ownerDocument.createElement(placesInside(el) ? 'span' : 'div');
+function createNode(el, inside) {
+  const node = el.ownerDocument.createElement(inside ? 'span' : 'div');
   node.className = CLASS;
   node.setAttribute('lang', 'zh-Hant');
-  if (placesInside(el)) el.insertBefore(node, el.querySelector(':scope > ul, :scope > ol'));
+  if (inside) el.insertBefore(node, el.querySelector(':scope > ul, :scope > ol'));
   else el.after(node);
   return node;
 }
 
-export function attachTranslation(el) {
+export function attachTranslation(el, { inside = false } = {}) {
   el.dataset.rlt = '1';
-  const node = existingNode(el) || createNode(el);
+  const node = existingNode(el) || createNode(el, placesInside(el, inside));
   node.className = `${CLASS} rlt-pending`;
   node.textContent = '';
   return {
@@ -47,6 +47,19 @@ export function attachTranslation(el) {
       el.removeAttribute('data-rlt');
     },
   };
+}
+
+export function removeTranslation(target) {
+  if (target.classList.contains(CLASS)) {
+    const owner = [target.previousElementSibling, target.parentElement].find((n) => n?.dataset.rlt);
+    target.remove();
+    owner?.removeAttribute('data-rlt');
+    return true;
+  }
+  if (!target.dataset.rlt) return false;
+  existingNode(target)?.remove();
+  target.removeAttribute('data-rlt');
+  return true;
 }
 
 export function detachAll(root) {

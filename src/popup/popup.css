@@ -7,3 +7,4 @@ select { flex: 1; }
 #status { color: var(--muted); white-space: pre-line; }
 #status.error { color: var(--err); }
 progress { width: 100%; }
+.hint { color: var(--muted); margin: 0 0 8px; }

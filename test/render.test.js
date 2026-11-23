@@ -71,3 +71,23 @@ test('a list item with a nested list gets its translation before the sub-list', 
   attachTranslation(li).update('再一次');
   assert.equal(li.querySelectorAll(':scope > .rlt-tr').length, 1);
 });
+
+test('inside placement puts the translation in the block itself', () => {
+  const doc = domFrom('<div style="display:flex"><p>Text</p></div>');
+  const p = doc.querySelector('p');
+  attachTranslation(p, { inside: true }).update('文字');
+  assert.equal(p.lastElementChild.textContent, '文字');
+  assert.equal(p.parentElement.children.length, 1);
+});
+
+test('removeTranslation clears a translation from its block or from the translation node itself', async () => {
+  const { removeTranslation } = await import('../src/content/render.js');
+  const doc = domFrom('<p id="a">A</p><p id="b">B</p>');
+  const a = doc.getElementById('a'), b = doc.getElementById('b');
+  attachTranslation(a).update('甲');
+  attachTranslation(b, { inside: true }).update('乙');
+  assert.equal(removeTranslation(a), true);
+  assert.equal(removeTranslation(b.querySelector('.rlt-tr')), true);
+  assert.equal(doc.querySelectorAll('.rlt-tr, [data-rlt]').length, 0);
+  assert.equal(removeTranslation(a), false);
+});

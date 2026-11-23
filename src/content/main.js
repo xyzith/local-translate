@@ -1,36 +1,15 @@
-import { PORT_NAME, SETTINGS_DEFAULTS } from '../shared/protocol.js';
+import { SETTINGS_DEFAULTS } from '../shared/protocol.js';
 import { buildContext } from '../shared/prompt.js';
 import { findSegments } from './extract.js';
-import { attachTranslation, detachAll, STYLE } from './render.js';
+import { detachAll } from './render.js';
 import { createScheduler } from './scheduler.js';
-import { createClient } from './client.js';
+import { createRunner, injectStyle } from './runner.js';
 
 const SCAN_DEBOUNCE_MS = 300;
 const SCAN_MAX_WAIT_MS = 1500;
 const PREFETCH_MARGIN = '300px 0px';
 
-const client = createClient({
-  async connect() {
-    const res = await chrome.runtime.sendMessage({ type: 'ensure-offscreen' });
-    if (res?.error) throw new Error(res.error);
-    return chrome.runtime.connect({ name: PORT_NAME });
-  },
-});
-
-async function translateSegment(seg, signal) {
-  if (signal.aborted || !seg.el.isConnected) return;
-  const view = attachTranslation(seg.el);
-  try {
-    await client.translate(
-      { text: seg.text, context: buildContext(seg) },
-      { signal, onText: (text) => { if (!signal.aborted) view.update(text); } },
-    );
-    if (!signal.aborted) view.done({ truncated: seg.truncated });
-  } catch (err) {
-    if (signal.aborted) view.remove();
-    else view.fail(err.message);
-  }
-}
+const translateSegment = createRunner({ contextOf: buildContext });
 
 const scheduler = createScheduler({ run: translateSegment });
 let segOf = new WeakMap();
@@ -89,9 +68,7 @@ new MutationObserver((mutations) => {
   timer = setTimeout(() => { firstPending = 0; scan(); }, wait);
 }).observe(document.body, { childList: true, subtree: true });
 
-const style = document.createElement('style');
-style.textContent = STYLE;
-document.head.append(style);
+injectStyle(document);
 
 chrome.storage.local.get(SETTINGS_DEFAULTS).then(({ enabled: on }) => setEnabled(on));
 chrome.storage.onChanged.addListener((changes, area) => {

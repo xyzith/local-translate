@@ -63,3 +63,11 @@ test('context is fenced in tags and the paragraph to translate comes last', () =
   assert.ok(user.content.trimEnd().endsWith('Child.'));
   assert.ok(!user.content.includes('/no_think'));
 });
+
+test('page context uses the document title and meta description', async () => {
+  const { buildPageContext } = await import('../src/shared/prompt.js');
+  const d = domFrom('<head><title>Rust 1.90 released</title><meta name="description" content="Release notes"></head><body></body>');
+  assert.deepEqual(buildPageContext(d), { pageTitle: 'Rust 1.90 released', description: 'Release notes' });
+  const [, user] = buildMessages({ text: 'Hi.', context: buildPageContext(d) });
+  assert.match(user.content, /<page>Rust 1.90 released — Release notes<\/page>/);
+});

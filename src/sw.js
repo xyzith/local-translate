@@ -27,3 +27,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !changes.modelId) return;
   chrome.runtime.sendMessage({ type: 'set-model', modelId: changes.modelId.newValue }).catch(() => {});
 });
+
+const MENU_ID = 'translate-block';
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({ id: MENU_ID, title: '翻譯這一段（再按一次取消）', contexts: ['page', 'selection', 'link'] });
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== MENU_ID || !tab?.id || info.frameId !== 0) return;
+  chrome.tabs.sendMessage(tab.id, { type: 'context-translate' }, { frameId: 0 }).catch(() => {});
+});

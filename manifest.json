@@ -1,15 +1,45 @@
 {
   "manifest_version": 3,
-  "name": "Reddit 本機翻譯（實驗）",
-  "version": "0.1.0",
-  "description": "在瀏覽器內用 WebGPU 跑 Qwen 小模型，把新版 Reddit 逐段翻成繁體中文對照。",
+  "name": "本機翻譯（實驗）",
+  "version": "0.2.0",
+  "description": "在瀏覽器內用 WebGPU 跑 Qwen 小模型翻成繁體中文：Reddit 自動逐段對照，其他網站右鍵「翻譯這一段」。",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlqmuTs029zzPfm5juu2eX5jhxepNk/dUvK1W1KxQkXe2wA3oRKAIjguki7c0LvA1WyQ3IayskUPhqRfjSNpcjXtHF8xS+Sm0seffnOcJEhE+zf/NzWYB5Z823jeqnrNMTxQBYQg8hGSQKvwyCqmmCcJEXXCpMWA2CW71MUBbfljEquhfbKJ1GFzznxJw3s/bjhnQbo7ksUDwyFKWcDRdbjNRd2iUSEYU8V/P8H/babS6bq98YhumCW/sD6RngvSx92wAU6W5KP4ySU9++0ip1pJke9lcsTAwh0VJ6j4inr55zOe86e/lZDA/Ft9BkUEqmk3JxLJ6Jtr0jDYc1yLz1QIDAQAB",
   "minimum_chrome_version": "124",
-  "permissions": ["storage", "offscreen"],
-  "host_permissions": ["https://www.reddit.com/*"],
-  "background": { "service_worker": "sw.js", "type": "module" },
-  "action": { "default_popup": "popup.html", "default_title": "Reddit 本機翻譯" },
+  "permissions": [
+    "storage",
+    "offscreen",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "sw.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "本機翻譯"
+  },
   "content_scripts": [
-    { "matches": ["https://www.reddit.com/*"], "js": ["content.js"], "run_at": "document_idle" }
+    {
+      "matches": [
+        "https://www.reddit.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "generic.js"
+      ],
+      "run_at": "document_idle"
+    }
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"

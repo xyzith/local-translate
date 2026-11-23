@@ -1,5 +1,5 @@
 {
-  "name": "reddit-local-translate",
+  "name": "local-translate",
   "private": true,
   "type": "module",
   "scripts": {
